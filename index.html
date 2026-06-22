@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="ja">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>ふみのリバーシ</title>
+    <title>⚪⚫ りばあし | REVERSI WEB PLAYER</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
     <style>
@@ -12,61 +12,72 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        background-color: #ffffff;
+        background: linear-gradient(135deg, #0a0a0c 0%, #14141f 100%);
         overflow: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
       }
+
+      /* 絶対中央配置で画面からはみ出さないコンテナ */
       #unity-container {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100vw;
-        max-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      #unity-canvas {
-        /* アスペクト比 16:10 を維持しつつ、画面いっぱいにフィットさせる */
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 160vh;
-        max-height: 62.5vw;
-        aspect-ratio: 16 / 10;
-        display: block;
-        box-shadow: 0px 4px 20px rgba(0,0,0,0.15);
-      }
-      #unity-loading-bar {
-        position: absolute;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #231F20;
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
       }
-      #unity-logo {
-        width: 154px;
-        height: 130px;
-        background: url('TemplateData/webgl-logo.png') no-repeat center;
+
+      #unity-canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 16px;
       }
-      #unity-progress-bar-empty {
-        width: 141px;
-        height: 18px;
-        margin-top: 10px;
-        background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center;
+
+      /* ポータルへ戻るボタン */
+      .btn-back-portal {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(18, 18, 20, 0.85);
+        border: 1px solid #4CAF50;
+        color: #4CAF50;
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: bold;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        z-index: 100000;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+        backdrop-filter: blur(8px);
       }
-      #unity-progress-bar-full {
-        width: 0%;
-        height: 18px;
-        background: url('TemplateData/progress-bar-full-dark.png') no-repeat center;
-      }
-      #unity-footer {
-        display: none !important; /* フルスクリーンボタンやロゴのあるフッターを非表示にする */
+
+      .btn-back-portal:hover {
+        background: rgba(76, 175, 80, 0.15);
+        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.5);
+        transform: translateY(-1px);
+        color: #ffffff;
+        border-color: #ffffff;
       }
     </style>
   </head>
   <body>
+    <!-- 🏠 画面右上ポータルTOPへ戻るボタン -->
+    <a href="#" class="btn-back-portal" id="btn-back-portal-top">
+      <span>🏠</span> ポータルTOPへ戻る
+    </a>
+
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -74,12 +85,41 @@
         </div>
       </div>
       <div id="unity-warning"> </div>
+      <div id="unity-footer" style="display: none;">
+        <div id="unity-logo-title-footer"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">Reversi</div>
+      </div>
     </div>
     <script>
+      var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
 
+      // アスペクト比 16:9 を維持してウィンドウにフィットさせるレスポンシブスクリプト
+      function resizeCanvas() {
+        const padding = 60; // 上下左右に設ける余白
+        const availableWidth = window.innerWidth - padding;
+        const availableHeight = window.innerHeight - padding;
+        
+        let width = availableWidth;
+        let height = availableWidth * (9 / 16);
+        
+        if (height > availableHeight) {
+          height = availableHeight;
+          width = availableHeight * (16 / 9);
+        }
+        
+        container.style.width = width + "px";
+        container.style.height = height + "px";
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      // 初回リサイズを実行
+      resizeCanvas();
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
       function unityShowBanner(msg, type) {
         var warningBanner = document.querySelector("#unity-warning");
         function updateBannerVisibility() {
@@ -113,20 +153,110 @@
         showBanner: unityShowBanner,
       };
 
-      loadingBar.style.display = "block";
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.querySelector("#unity-container").className = "unity-mobile";
+        canvas.className = "unity-mobile";
+      }
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      // ポータル戻るリンクの自動マッピング
+      document.addEventListener('DOMContentLoaded', () => {
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const portalTopUrl = isLocalHost ? "/index.html" : "https://fumiakinx.github.io/";
+        const backBtn = document.getElementById('btn-back-portal-top');
+        if (backBtn) {
+          backBtn.href = portalTopUrl;
+        }
+      });
 
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-        }).catch((message) => {
-          alert(message);
-        });
-      };
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+              }).then((unityInstance) => {
+                window.myUnityInstance = unityInstance;
+                document.querySelector("#unity-loading-bar").style.display = "none";
+                document.querySelector("#unity-fullscreen-button").onclick = () => {
+                  unityInstance.SetFullscreen(1);
+                };
+                // 読み込み完了時にもリサイズを実行
+                resizeCanvas();
+              }).catch((message) => {
+                alert(message);
+              });
+            };
+
       document.body.appendChild(script);
+
+      // GAS スプレッドシート Web API 連携
+      var REVERSI_RANKING_API_URL = "https://script.google.com/macros/s/AKfycbwPIf9u9eD1V5bGIh2LdX_wPLvqSjz5ZPmDK4XPo6xzJKzBRrzuiPjcITpeApWY6A/exec";
+
+      window.RequestReversiOpenings = async function(sheetName) {
+        console.log("[JS] 定石データ取得要求を受け取りました。シート名: " + sheetName);
+        try {
+          var targetUrl = REVERSI_RANKING_API_URL + "?action=get_openings";
+          if (sheetName) {
+            targetUrl += "&sheet_name=" + encodeURIComponent(sheetName);
+          }
+          var response = await fetch(targetUrl);
+          var resData = await response.json();
+          if (resData.success && window.myUnityInstance) {
+            console.log("[JS] 定石データロード完了。Unityへ転送します。");
+            resData.sheetName = sheetName;
+            window.myUnityInstance.SendMessage("ReversiController", "OnOpeningsReceived", JSON.stringify(resData));
+          }
+        } catch (e) {
+          console.error("[JS] 定石データ取得エラー:", e);
+        }
+      };
+
+      window.SendReversiKifu = async function(kifuText, result, playerName, metaJson) {
+        console.log("[JS] 棋譜データ送信要求を受け取りました。");
+        var name = playerName || localStorage.getItem('jigsaw_player_name') || "Guest";
+        
+        var sendUrl = REVERSI_RANKING_API_URL + "?action=add_kifu&kifu_text=" + encodeURIComponent(kifuText) + "&result=" + encodeURIComponent(result) + "&player_name=" + encodeURIComponent(name);
+        if (metaJson) {
+          try {
+            var meta = JSON.parse(metaJson);
+            sendUrl = REVERSI_RANKING_API_URL + "?action=add_transcript" +
+                      "&md5=" + encodeURIComponent(meta.md5) +
+                      "&kifu=" + encodeURIComponent(meta.kifu) +
+                      "&sente=" + encodeURIComponent(meta.sente) +
+                      "&black_stones=" + encodeURIComponent(meta.black_stones) +
+                      "&gote=" + encodeURIComponent(meta.gote) +
+                      "&white_stones=" + encodeURIComponent(meta.white_stones) +
+                      "&datetime=" + encodeURIComponent(meta.datetime);
+          } catch(e) {
+            console.error("[JS] メタデータのパースに失敗しました:", e);
+          }
+        }
+
+        try {
+          var response = await fetch(sendUrl);
+          var resData = await response.json();
+          console.log("[JS] 棋譜・Transcript保存完了:", resData);
+        } catch (e) {
+          console.error("[JS] 棋譜保存エラー:", e);
+        }
+      };
+
+      window.SendReverseOpening = async function(steps, win) {
+        console.log("[JS] 逆定石データ送信要求を受け取りました。");
+        var sendUrl = REVERSI_RANKING_API_URL + "?action=add_reverse_opening&steps=" + encodeURIComponent(steps) + "&win=" + encodeURIComponent(win);
+        try {
+          var response = await fetch(sendUrl);
+          var resData = await response.json();
+          console.log("[JS] 逆定石保存完了:", resData);
+        } catch (e) {
+          console.error("[JS] 逆定石保存エラー:", e);
+        }
+      };
     </script>
   </body>
 </html>
