@@ -246,9 +246,9 @@
         }
       };
 
-      window.SendReverseOpening = async function(steps, win) {
+      window.SendReverseOpening = async function(zhash, win) {
         console.log("[JS] 逆定石データ送信要求を受け取りました。");
-        var sendUrl = REVERSI_RANKING_API_URL + "?action=add_reverse_opening&steps=" + encodeURIComponent(steps) + "&win=" + encodeURIComponent(win);
+        var sendUrl = REVERSI_RANKING_API_URL + "?action=add_reverse_opening&zhash=" + encodeURIComponent(zhash) + "&win=" + encodeURIComponent(win);
         try {
           var response = await fetch(sendUrl);
           var resData = await response.json();
